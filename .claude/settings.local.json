@@ -30,7 +30,8 @@
       "Bash(PGPASSWORD=postgres psql -h localhost -U postgres -d seckill -c \"SELECT id, stock, version FROM seckill;\" 2>/dev/null || echo \"psql not available\")",
       "Bash(mvn test 2>&1 | grep -E \"Tests run|BUILD\")",
       "Bash(mvn clean test 2>&1 | grep -E \"Tests run|BUILD|ERROR\")",
-      "Bash(mvn clean test 2>&1 | grep -E \"Tests run|BUILD\")"
+      "Bash(mvn clean test 2>&1 | grep -E \"Tests run|BUILD\")",
+      "Bash(mvn test -Dtest=StressTest -q 2>&1)"
     ]
   }
 }

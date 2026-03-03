@@ -173,19 +173,23 @@ class StressTest {
         int redisDecrementCount = TOTAL_STOCK - (redisStock != null ? redisStock : 0);
         log.info("Redis 扣减数量：{}", redisDecrementCount);
 
-        // 关键验证：订单数不能超过总库存
+        // 关键验证 1: 订单数不能超过总库存（防止超卖）
         assertThat(orderCount).isLessThanOrEqualTo(TOTAL_STOCK)
                 .as("订单数 (%d) 不能超过总库存 (%d)", orderCount, TOTAL_STOCK);
 
-        // 验证：数据库库存应该一致
+        // 关键验证 2: 数据库库存应该一致（total = available + locked + sold）
         assertThat(dbInventory.isConsistent()).isTrue()
                 .as("数据库库存应该平衡：total=%d, available=%d, locked=%d, sold=%d",
                         dbInventory.getTotalStock(), dbInventory.getAvailableStock(),
                         dbInventory.getLockedStock(), dbInventory.getSoldStock());
 
-        // 验证：已售库存 + 锁定库存应该等于 Redis 扣减数量
-        int dbCommitted = dbInventory.getSoldStock() + dbInventory.getLockedStock();
-        log.info("已售库存：{}, 锁定库存：{}, Redis 扣减：{}", dbInventory.getSoldStock(), dbInventory.getLockedStock(), redisDecrementCount);
+        // 关键验证 3: 已售库存应该等于订单数（所有订单都应该完成销售）
+        assertThat(dbInventory.getSoldStock()).isEqualTo(orderCount)
+                .as("已售库存 (%d) 应该等于订单数 (%d)", dbInventory.getSoldStock(), orderCount);
+
+        // 关键验证 4: 锁定库存应该为 0（所有处理中的订单都应该完成）
+        assertThat(dbInventory.getLockedStock()).isZero()
+                .as("锁定库存应该为 0，实际为 %d", dbInventory.getLockedStock());
 
         log.info("========== 压力测试通过 ==========");
         log.info("总库存：{}", TOTAL_STOCK);
@@ -256,14 +260,29 @@ class StressTest {
 
         log.info("测试库存：{}, 并发请求：{}, 实际订单：{}, 成功计数：{}", testStock, concurrentUsers, orderCount, successCount.get());
 
-        // 关键断言：订单数不能超过库存数
+        // 关键断言 1: 订单数不能超过库存数
         assertThat(orderCount).isLessThanOrEqualTo(testStock)
                 .as("发生超卖！订单数 (%d) > 库存数 (%d)", orderCount, testStock);
 
-        // 验证数据库库存一致性
+        // 关键断言 2: 已售库存应该等于订单数
         Inventory inventory = inventoryRepository.findById(1L).orElseThrow();
+        assertThat(inventory.getSoldStock()).isEqualTo(orderCount)
+                .as("已售库存 (%d) 应该等于订单数 (%d)", inventory.getSoldStock(), orderCount);
+
+        // 关键断言 3: 锁定库存应该为 0
+        assertThat(inventory.getLockedStock()).isZero()
+                .as("锁定库存应该为 0，实际为 %d", inventory.getLockedStock());
+
+        // 关键断言 4: 数据库库存一致性
         assertThat(inventory.isConsistent()).isTrue()
-                .as("库存不平衡");
+                .as("库存不平衡：total=%d, available=%d, locked=%d, sold=%d",
+                        inventory.getTotalStock(), inventory.getAvailableStock(),
+                        inventory.getLockedStock(), inventory.getSoldStock());
+
+        log.info("========== 无超卖验证通过 ==========");
+        log.info("测试库存：{}, 并发请求：{}, 实际订单：{}, 成功计数：{}", testStock, concurrentUsers, orderCount, successCount.get());
+        log.info("数据库已售：{}, 锁定：{}, 可用：{}",
+                inventory.getSoldStock(), inventory.getLockedStock(), inventory.getAvailableStock());
 
         executor.shutdown();
     }
@@ -321,21 +340,27 @@ class StressTest {
         log.info("DB 已售库存：{}", dbInventory.getSoldStock());
         log.info("订单数：{}", orders.size());
 
-        // Redis 扣减的数量
-        int redisSold = testStock - (redisStock != null ? redisStock : 0);
-
-        // 验证：Redis 售出的应该等于数据库已售 + 锁定（处理中）
-        int dbCommitted = dbInventory.getSoldStock() + dbInventory.getLockedStock();
-
-        log.info("Redis 售出：{}, DB 已售 + 锁定：{}", redisSold, dbCommitted);
-
-        // 订单数 + Redis 剩余应该等于初始库存（考虑失败回滚）
-        int totalAccounted = orders.size() + (redisStock != null ? redisStock : 0);
-        log.info("订单数 + Redis 剩余 = {}", totalAccounted);
-
-        // 验证：订单数不超过库存
+        // 验证 1: 订单数不超过库存
         assertThat(orders.size()).isLessThanOrEqualTo(testStock)
                 .as("订单数 (%d) 不能超过库存数 (%d)", orders.size(), testStock);
+
+        // 验证 2: 已售库存应该等于订单数
+        assertThat(dbInventory.getSoldStock()).isEqualTo(orders.size())
+                .as("已售库存 (%d) 应该等于订单数 (%d)", dbInventory.getSoldStock(), orders.size());
+
+        // 验证 3: 锁定库存应该为 0
+        assertThat(dbInventory.getLockedStock()).isZero()
+                .as("锁定库存应该为 0，实际为 %d", dbInventory.getLockedStock());
+
+        // 验证 4: 数据库库存一致性
+        assertThat(dbInventory.isConsistent()).isTrue()
+                .as("库存不一致：total=%d, available=%d, locked=%d, sold=%d",
+                        dbInventory.getTotalStock(), dbInventory.getAvailableStock(),
+                        dbInventory.getLockedStock(), dbInventory.getSoldStock());
+
+        log.info("订单数：{}, DB 已售：{}, DB 锁定：{}, DB 可用：{}",
+                orders.size(), dbInventory.getSoldStock(), dbInventory.getLockedStock(), dbInventory.getAvailableStock());
+        log.info("====================================");
 
         executor.shutdown();
     }
