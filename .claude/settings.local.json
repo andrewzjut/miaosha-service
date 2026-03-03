@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(mvn --version)",
+      "Bash(mvn clean compile)",
+      "Bash(mvn clean compile -q && echo \"BUILD SUCCESS\")",
+      "Bash(mvn test -q && echo \"TESTS PASSED\")",
+      "Bash(cp -r /Users/zhangtong/software/demos/demo8/.claude/rules/java ~/.claude/rules/java)",
+      "Bash(mvn clean compile test -q && echo \"BUILD & TESTS: PASSED\")",
+      "Bash(find /Users/zhangtong/software/demos/demo8/src/test/java -type f -name \"*.java\" 2>/dev/null | head -50)",
+      "Bash(find /Users/zhangtong/software/demos/demo8/src/main/java -type f -name \"*.java\" 2>/dev/null | head -50)",
+      "Bash(mvn clean compile -q 2>&1)",
+      "Bash(mvn test -q 2>&1)",
+      "Bash(mvn test 2>&1 | grep -A 5 \"Tests run:\")",
+      "Bash(mvn test 2>&1 | tail -50)",
+      "Bash(mvn test 2>&1 | tail -30)",
+      "Bash(mvn test 2>&1 | tail -20)",
+      "Bash(mvn test 2>&1 | grep -E \"\\(ERROR|Tests run\\)\" | head -20)",
+      "Bash(mvn test 2>&1 | grep -E \"ERROR|Tests run\")",
+      "Bash(mvn test 2>&1 | tail -15)",
+      "Bash(mvn clean package -DskipTests 2>&1 | tail -10)",
+      "Bash(mvn clean compile test-compile -q 2>&1)",
+      "Bash(mvn test -Dtest=OrderServiceTest,SeckillServiceTest,RedisStockServiceTest -q 2>&1 | tail -20)",
+      "Bash(mvn test -Dtest=OrderServiceTest,SeckillServiceTest,RedisStockServiceTest 2>&1 | grep -E \"Tests run|BUILD\")",
+      "Bash(PGPASSWORD=postgres psql -h localhost -U postgres -d seckill -c \"SELECT EXISTS \\(SELECT FROM information_schema.tables WHERE table_name = 'inventory'\\);\" 2>&1)",
+      "Bash(mvn test -Dtest=StressTest 2>&1)",
+      "Bash(mvn test -Dtest=StressTest -q 2>&1 | tail -100)",
+      "Bash(PGPASSWORD=postgres psql -h localhost -U postgres -d seckill -c \"SELECT id, stock, version FROM seckill;\" 2>/dev/null || echo \"psql not available\")",
+      "Bash(mvn test 2>&1 | grep -E \"Tests run|BUILD\")",
+      "Bash(mvn clean test 2>&1 | grep -E \"Tests run|BUILD|ERROR\")",
+      "Bash(mvn clean test 2>&1 | grep -E \"Tests run|BUILD\")"
+    ]
+  }
+}
