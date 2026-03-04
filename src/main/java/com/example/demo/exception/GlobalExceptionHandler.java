@@ -1,6 +1,7 @@
 package com.example.demo.exception;
 
-import com.example.demo.dto.OrderResult;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 全局异常处理器
@@ -37,7 +39,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理参数验证异常
+     * 处理参数验证异常（@RequestBody 中的 Bean Validation）
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationException(MethodArgumentNotValidException e) {
@@ -53,8 +55,28 @@ public class GlobalExceptionHandler {
         Map<String, Object> body = new HashMap<>();
         body.put("success", false);
         body.put("error", "VALIDATION_ERROR");
-        body.put("message", "参数验证失败");
+        body.put("message", "请求参数格式不正确");
         body.put("fieldErrors", fieldErrors);
+
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    /**
+     * 处理路径变量或请求参数上的校验异常（如 @RequestParam @Positive）
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleConstraintViolationException(ConstraintViolationException e) {
+        log.warn("请求参数校验失败：{}", e.getMessage());
+
+        // 提取所有违反的约束信息（通常只有一个）
+        String message = e.getConstraintViolations().stream()
+                .map(ConstraintViolation::getMessage)
+                .collect(Collectors.joining("; "));
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("success", false);
+        body.put("error", "VALIDATION_ERROR");
+        body.put("message", message.isEmpty() ? "参数校验失败" : message);
 
         return ResponseEntity.badRequest().body(body);
     }
@@ -75,7 +97,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理其他异常
+     * 处理其他未预期的系统异常
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleException(Exception e) {

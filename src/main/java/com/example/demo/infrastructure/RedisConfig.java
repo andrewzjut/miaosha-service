@@ -16,6 +16,9 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
+import java.text.SimpleDateFormat;
+import java.util.TimeZone;
+
 /**
  * Redis 配置类
  */
@@ -59,24 +62,30 @@ public class RedisConfig {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
 
-        // 配置 ObjectMapper
+        // 创建 ObjectMapper 并注册 JavaTimeModule
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
         objectMapper.activateDefaultTyping(
-            LaissezFaireSubTypeValidator.instance,
-            ObjectMapper.DefaultTyping.NON_FINAL
+                LaissezFaireSubTypeValidator.instance,
+                ObjectMapper.DefaultTyping.NON_FINAL
         );
+
+        // ✅ 关键：必须显式注册 JavaTimeModule
         objectMapper.registerModule(new JavaTimeModule());
 
-        // 序列化配置
+        // 可选：设置日期格式（避免默认的 ISO 格式出错）
+        objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS"));
+        objectMapper.setTimeZone(TimeZone.getDefault());
+
+        // 序列化器配置
         Jackson2JsonRedisSerializer<Object> jsonSerializer = new Jackson2JsonRedisSerializer<>(objectMapper, Object.class);
         StringRedisSerializer stringSerializer = new StringRedisSerializer();
 
-        // Key 采用 String 序列化
+        // Key 使用 String 序列化
         template.setKeySerializer(stringSerializer);
         template.setHashKeySerializer(stringSerializer);
 
-        // Value 采用 JSON 序列化
+        // Value 使用 JSON 序列化
         template.setValueSerializer(jsonSerializer);
         template.setHashValueSerializer(jsonSerializer);
 
@@ -84,18 +93,5 @@ public class RedisConfig {
         return template;
     }
 
-    /**
-     * ObjectMapper Bean（供其他服务使用）
-     */
-    @Bean
-    public ObjectMapper objectMapper() {
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
-        objectMapper.activateDefaultTyping(
-            LaissezFaireSubTypeValidator.instance,
-            ObjectMapper.DefaultTyping.NON_FINAL
-        );
-        objectMapper.registerModule(new JavaTimeModule());
-        return objectMapper;
-    }
+
 }
