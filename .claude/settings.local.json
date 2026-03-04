@@ -77,7 +77,11 @@
       "Bash(./k8s/stress-test.sh 2>&1 | tail -50)",
       "Bash(mvn clean compile -q)",
       "Bash(mvn test 2>&1 | tail -100)",
-      "Bash(mvn jacoco:report -q && echo \"=== 覆盖率报告生成成功 ===\" && ls -la target/site/jacoco/)"
+      "Bash(mvn jacoco:report -q && echo \"=== 覆盖率报告生成成功 ===\" && ls -la target/site/jacoco/)",
+      "Bash(mvn test -Dtest=OrderServiceTest -q 2>&1 | tail -30)",
+      "Bash(mvn test -Dtest=OrderServiceTest -q 2>&1 | tail -20)",
+      "Bash(mvn test -Dtest=OrderServiceTest 2>&1 | grep -E \"\\(Tests run|FAILURE|SUCCESS|ERROR\\)\")",
+      "Bash(mvn test 2>&1 | grep -E \"\\(Tests run|BUILD\\)\")"
     ]
   }
 }

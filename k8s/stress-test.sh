@@ -5,12 +5,12 @@
 set -e
 
 # ========== 配置区 ==========
-BASE_URL="${BASE_URL:-http://localhost:30080}"
+BASE_URL="${BASE_URL:-http://localhost:8080}"
 SECKILL_ID="${SECKILL_ID:-1}"
 
 # 测试场景配置
-TOTAL_REQUESTS="${TOTAL_REQUESTS:-200}"     # 总请求数
-CONCURRENT_LEVEL="${CONCURRENT_LEVEL:-20}"  # 并发度（每批多少个请求）
+TOTAL_REQUESTS="${TOTAL_REQUESTS:-100}"     # 总请求数
+CONCURRENT_LEVEL="${CONCURRENT_LEVEL:-50}"  # 并发度（每批多少个请求）
 SLEEP_INTERVAL="${SLEEP_INTERVAL:-0.01}"    # 请求间隔（秒）
 
 # 颜色输出

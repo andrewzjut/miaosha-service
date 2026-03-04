@@ -64,9 +64,9 @@ public class OrderService {
         String lockKey = "seckill:" + seckillId;
 
         return distributedLockService.executeWithLock(lockKey, 3, 10, () -> {
-            // 1. 双重检查：检查用户是否已参与
-            if (seckillResultRepository.existsById(userId)) {
-                log.info("用户已参与秒杀：userId={}, seckillId={}", userId, seckillId);
+            // 1. 双重检查：检查用户是否已成功参与（只拦截真正抢购成功的用户）
+            if (seckillResultRepository.existsSuccessfulBySeckillId(userId, seckillId)) {
+                log.info("用户已成功参与秒杀：userId={}, seckillId={}", userId, seckillId);
                 return OrderResult.fail("您已参与过本次秒杀");
             }
 

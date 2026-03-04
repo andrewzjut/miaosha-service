@@ -104,7 +104,7 @@ class OrderServiceTest {
         willAnswer(invocation -> {
             Supplier<OrderResult> supplier = invocation.getArgument(3);
             // 设置锁内的行为
-            given(seckillResultRepository.existsById(userId)).willReturn(false);
+            given(seckillResultRepository.existsSuccessfulBySeckillId(userId, seckillId)).willReturn(false);
             given(seckillRepository.findById(seckillId)).willReturn(Optional.of(testSeckill));
             given(inventoryService.getInventory(seckillId)).willReturn(testInventory);
             given(inventoryService.tryLockStock(seckillId, 1, testInventory.getVersion())).willReturn(true);
@@ -132,7 +132,8 @@ class OrderServiceTest {
 
         willAnswer(invocation -> {
             Supplier<OrderResult> supplier = invocation.getArgument(3);
-            given(seckillResultRepository.existsById(userId)).willReturn(true);
+            // 只有成功参与的记录才会被拦截
+            given(seckillResultRepository.existsSuccessfulBySeckillId(userId, seckillId)).willReturn(true);
             return supplier.get();
         }).given(distributedLockService).executeWithLock(anyString(), anyLong(), anyLong(), (Supplier<OrderResult>) any());
 
@@ -156,7 +157,7 @@ class OrderServiceTest {
 
         willAnswer(invocation -> {
             Supplier<OrderResult> supplier = invocation.getArgument(3);
-            given(seckillResultRepository.existsById(userId)).willReturn(false);
+            given(seckillResultRepository.existsSuccessfulBySeckillId(userId, seckillId)).willReturn(false);
             given(seckillRepository.findById(seckillId)).willReturn(Optional.of(testSeckill));
             given(inventoryService.getInventory(seckillId)).willReturn(testInventory);
             given(inventoryService.tryLockStock(seckillId, 1, testInventory.getVersion())).willReturn(false);
