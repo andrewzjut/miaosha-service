@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: seckill-redis
+  namespace: seckill
+  labels:
+    app: seckill-redis
+spec:
+  clusterIP: None
+  ports:
+    - port: 6379
+      targetPort: 6379
+      name: redis
+  selector:
+    app: seckill-redis
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: seckill-redis
+  namespace: seckill
+spec:
+  serviceName: seckill-redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: seckill-redis
+  template:
+    metadata:
+      labels:
+        app: seckill-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+              name: redis
+          command:
+            - redis-server
+            - --appendonly
+            - "yes"
+          volumeMounts:
+            - name: redis-storage
+              mountPath: /data
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-storage
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi

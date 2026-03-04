@@ -2,7 +2,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: seckill-app-hpa
-  namespace: default
+  namespace: seckill
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
@@ -25,14 +25,6 @@ spec:
         target:
           type: Utilization
           averageUtilization: 80
-    # Kafka 队列长度（需要自定义指标）
-    - type: Pods
-      pods:
-        metric:
-          name: kafka_lag_seconds
-        target:
-          type: AverageValue
-          averageValue: "30"
   behavior:
     scaleDown:
       stabilizationWindowSeconds: 300

@@ -1,0 +1,131 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: seckill-postgres
+  namespace: seckill
+  labels:
+    app: seckill-postgres
+spec:
+  clusterIP: None
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+  selector:
+    app: seckill-postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: seckill-postgres
+  namespace: seckill
+spec:
+  serviceName: seckill-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: seckill-postgres
+  template:
+    metadata:
+      labels:
+        app: seckill-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_DB
+              value: "seckill"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              value: "postgres123"
+            - name: PGDATA
+              value: "/var/lib/postgresql/data/pgdata"
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-storage
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-seckill-tables
+  namespace: seckill
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:15-alpine
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for PostgreSQL to be ready..."
+              until pg_isready -h seckill-postgres -U postgres; do
+                sleep 2
+              done
+              echo "PostgreSQL is ready"
+      containers:
+        - name: migrate
+          image: postgres:15-alpine
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Running database migration..."
+              PGPASSWORD=postgres123 psql -h seckill-postgres -U postgres -d seckill -f /migrations/V1__init_schema.sql
+              PGPASSWORD=postgres123 psql -h seckill-postgres -U postgres -d seckill -f /migrations/V2__add_inventory_table.sql
+              echo "Migration completed"
+          volumeMounts:
+            - name: migration-scripts
+              mountPath: /migrations
+          env:
+            - name: PGPASSWORD
+              value: "postgres123"
+      volumes:
+        - name: migration-scripts
+          configMap:
+            name: seckill-migrations
+            defaultMode: 0755
+      restartPolicy: OnFailure
+  backoffLimit: 3

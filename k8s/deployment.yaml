@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: seckill-app
-  namespace: default
+  namespace: seckill
   labels:
     app: seckill-app
 spec:
@@ -15,39 +15,19 @@ spec:
       labels:
         app: seckill-app
     spec:
+      serviceAccountName: seckill-service-account
       containers:
         - name: seckill-app
           image: seckill-app:latest
-          imagePullPolicy: Always
+          imagePullPolicy: Never  # 使用本地镜像
           ports:
             - containerPort: 8080
               name: http
-          env:
-            - name: DB_HOST
-              valueFrom:
-                secretKeyRef:
-                  name: seckill-db-secret
-                  key: host
-            - name: DB_PORT
-              value: "5432"
-            - name: DB_NAME
-              value: "seckill"
-            - name: DB_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: seckill-db-secret
-                  key: username
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: seckill-db-secret
-                  key: password
-            - name: REDIS_HOST
-              value: "redis-master.default.svc.cluster.local"
-            - name: REDIS_PORT
-              value: "6379"
-            - name: KAFKA_BOOTSTRAP_SERVERS
-              value: "kafka.default.svc.cluster.local:9092"
+          envFrom:
+            - configMapRef:
+                name: seckill-config
+            - secretRef:
+                name: seckill-db-secret
           resources:
             requests:
               cpu: "250m"
@@ -71,12 +51,19 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 3
             failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 18
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: seckill-app-service
-  namespace: default
+  namespace: seckill
 spec:
   selector:
     app: seckill-app
@@ -85,3 +72,20 @@ spec:
       port: 80
       targetPort: 8080
   type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seckill-app-nodeport
+  namespace: seckill
+  annotations:
+    description: "NodePort service for external access"
+spec:
+  selector:
+    app: seckill-app
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080
+  type: NodePort
